@@ -1,4 +1,6 @@
-package aes_pkg
+`ifndef AES_PKG_SV
+`define AES_PKG_SV
+package aes_pkg;
     `include "aes_define.sv"
 
     `include "aes_base.sv"
@@ -7,3 +9,4 @@ package aes_pkg
 
     `include "aes.sv"
 endpackage
+`endif // AES_PKG_SV

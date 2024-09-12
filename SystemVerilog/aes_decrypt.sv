@@ -2,24 +2,28 @@
 `define AES_DECRYPT_SV
 class AES_Decrypt #(parameter N=256,parameter Nr=14,parameter Nk=8) extends aes_base;
 
-  string name;
-  bit [(N*(Nr+1))-1 :0] fullkeys;
-  bit [N-1:0] states [Nr+1:0] ;
-  bit [N-1:0] afterSubBytes;
-  bit [N-1:0] afterShiftRows;
+  string                 name;
+  bit [(128*(Nr+1))-1:0] fullkeys;
+  bit [127:0]            states [Nr+1:0] ;
+  bit [127:0]            afterSubBytes;
+  bit [127:0]            afterShiftRows;
 
   function new(string name="aes_decrypt");
     this.name = name;
+    this.nk   = Nk;
+    this.nr   = Nr;
   endfunction
 
-  extern function void decrypt(bit[N-1 : 0] key, bit[DWIDTH-1 : 0] in, bit[DWIDTH-1 : 0] out);
+  extern function void decrypt(bit[N-1 : 0] key, bit[127 : 0] in, bit[127 : 0] out);
   extern function decryptRound(bit[127:0] in, bit[127:0] key, ref bit[127:0] out);
+
 endclass
 
-function void AES_Decrypt::decrypt(bit[N-1 : 0] key, bit[DWIDTH-1 : 0] in, bit[DWIDTH-1 : 0] out);
+function void AES_Decrypt::decrypt(bit[N-1 : 0] key, bit[127 : 0] in, bit[127 : 0] out);
   fullkeys = keyExpansion(key);
-  for(ii=1; ii<Nr ;ii=ii+1)begin
-    decryptRound(states[i-1],fullkeys[i*128+:128],states[i]);
+
+  for(int ii=1; ii<Nr ;ii=ii+1)begin
+    decryptRound(states[ii-1],fullkeys[ii*128+:128],states[ii]);
   end
   inverseShiftRows(states[Nr-1],afterShiftRows);
   inverseSubBytes(afterShiftRows,afterSubBytes);

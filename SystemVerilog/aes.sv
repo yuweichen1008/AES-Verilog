@@ -2,13 +2,14 @@
 `define AES_SV
 class aes;
 
+  string      name;
   aes_base    ab;
-  aes_encrypt ae;
-  aes_decrypt ad;
+  AES_Encrypt ae;
+  AES_Decrypt ad;
   int         aes_mode; // 3 : AES-256, 2 : AES-196, 1 : AES-128
 
   function new(string name = "aes");
-    super.new(name);
+    this.name = name;
   endfunction
 
   extern function void init_aes(int mode);

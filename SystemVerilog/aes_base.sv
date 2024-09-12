@@ -2,15 +2,17 @@
 `define AES_BASE_SV
 class aes_base;
 
-  int aes_key_length;
+  string name;
+  int    aes_key_length;
+  int    nk, nr;
 
   function new(string name = "aes_base");
-    super.new(name);
+    this.name = name;
   endfunction
   
   extern function void init_aes(int mode);
-  extern function void rotword(ref bit[0:31] x);
-  extern function void subwordx(ref bit[0:31] a);
+  extern function bit[0:31] rotword(bit[0:31] x);
+  extern function bit[0:31] subwordx(bit[0:31] a);
   extern function void addRoundKey(bit[127:0] data, bit[127:0] key, ref bit[127:0] out);
   // Encryption
   extern function void subBytes(bit[127:0] in, ref bit[127:0] out);
@@ -31,23 +33,23 @@ class aes_base;
   extern function bit[0:31] rconx(bit[0:3] in);
   extern function bit[0:7] sbox(bit[0:7] C);
   extern function bit[0:7] inverseSbox(bit[0:7] C);
-  extern function bit[0:1919] keyExpansion( bit[0:255] key );
+  extern function bit[1919: 0] keyExpansion( bit[255:0] key );
 
 endclass
 
 function void aes_base::init_aes(int mode);
   case(mode)
-    1: key_length = 128;
-    2: key_length = 196;
-    3: key_length = 256;
+    1: aes_key_length = 128;
+    2: aes_key_length = 196;
+    3: aes_key_length = 256;
   endcase
 endfunction
 
-function void aes_base::rotword(ref bit[0:31] x);
+function bit[0:31] aes_base::rotword(bit[0:31] x);
   rotword={x[8:31],x[0:7]};
 endfunction
 
-function void aes_base::subwordx(ref bit[0:31] a);
+function bit[0:31] aes_base::subwordx(bit[0:31] a);
   subwordx[0:7]   = sbox(a[0:7]);
   subwordx[8:15]  = sbox(a[8:15]);
   subwordx[16:23]  = sbox(a[16:23]);
@@ -58,7 +60,7 @@ function void aes_base::addRoundKey(bit[127:0] data, bit[127:0] key, ref bit[127
   out = key ^ data;
 endfunction
 
-f24ction void aes_base::subBytes(bit[127:0] in, ref bit[127:0] out);
+function void aes_base::subBytes(bit[127:0] in, ref bit[127:0] out);
   for(int ii = 0; ii < 128; ii += 8)
   begin
     out[ii +: 8] = sbox(in[ii +: 8]);
@@ -102,7 +104,7 @@ endfunction
 
 function void aes_base::inverseSubBytes(bit[127:0] in, ref bit[127:0] out);
   for(int ii = 0; ii < 128; ii+=8) begin
-    out[ii +: 8] = inverseSbox(in[ii +: 8])
+    out[ii +: 8] = inverseSbox(in[ii +: 8]);
   end
 endfunction
 
@@ -701,23 +703,21 @@ function bit[0:7] aes_base::inverseSbox(bit[0:7] C);
   endcase
 endfunction
 
-function bit[0:1919] aes_base::keyExpansion( bit[0:255] key );
-  // w represents the array that will store all the generated keys of all rounds.
-  /* [(128 * (nr + 1)) - 1] this formula is meant to calculate the length of W ; so that it can store all the
-  generated keys of all rounds.*/ 
-  bit[0:1919] w; // Word array for the key schedule
-  bit[0:  31] temp;
-  bit[0:  31] r;
-  bit[0:  31] rot; // It stores the returned value from the function rotword().
-  bit[0:  31] x;  //It stores the returned value from the function subwordx().
-  bit[0:  31] rconv; //It stores the returned value from the function rconx().
-  bit[0:  31] new;
+function bit[1919: 0] aes_base::keyExpansion( bit[255:0] key );
+
+  bit[1919: 0] w; // Word array for the key schedule
+  bit[  31: 0] temp;
+  bit[  31: 0] r;
+  bit[  31: 0] rot; // It stores the returned value from the function rotword().
+  bit[  31: 0] x;  //It stores the returned value from the function subwordx().
+  bit[  31: 0] rconv; //It stores the returned value from the function rconx().
+  bit[  31: 0] newKey;
 
   //The first [(nk*32)-1 ]-bit key is stored in W.
   w = key;    
 
   for(int i = nk; i < 4*(nr + 1); i = i + 1) begin
-    temp = w[(128 * (nr + 1) - 32) +: 32];
+    temp = w[(128 * (nr + 1) - 32) +: 32]; // Start from w[1919:1888]
     if(i % nk == 0) begin
       rot = rotword(temp); // A call to the function rotword() is done and the returned value is stored in rot.
       x = subwordx (rot);  //A call to the function subwordx() is done and the returned value is stored in x.
@@ -727,10 +727,10 @@ function bit[0:1919] aes_base::keyExpansion( bit[0:255] key );
     else if(nk >6 && i % nk == 4) begin
       temp = subwordx(temp);
     end
-    new = (w[(128*(nr+1)-(nk*32))+:32] ^ temp);
+    newKey = (w[(128 * (nr + 1) - (nk*32) ) +: 32] ^ temp);
     // We would shift W by 32 bit to the left to add the new generated key word (new) at its end.
     w = w << 32;
-    w = {w[0 : (128 * (nr + 1) - 32) - 1], new};
+    w = {w[1919 : 32], newKey};
   end
   keyExpansion = w;
 endfunction
